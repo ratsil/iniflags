@@ -34,6 +34,11 @@ var (
 // via either -configUpdateInterval or SIGHUP.
 var Generation int
 
+// ErrorOnUnknown controls unknown flags processing.
+// If set to true then error will be triggered in a case of unknown flags.
+// Default value is false
+var ErrorOnUnknown bool
+
 // Parse obtains flag values from config file set via -config.
 //
 // It obtains flag values from command line like flag.Parse(), then overrides
@@ -163,8 +168,10 @@ func parseConfigFlags() (oldFlagValues map[string]string, ok bool) {
 	for _, arg := range parsedArgs {
 		f := flag.Lookup(arg.Key)
 		if f == nil {
-			log.Printf("iniflags: unknown flag name=[%s] found at line [%d] of file [%s]\n", arg.Key, arg.LineNum, arg.FilePath)
-			ok = false
+			if ErrorOnUnknown {
+				log.Printf("iniflags: unknown flag name=[%s] found at line [%d] of file [%s]\n", arg.Key, arg.LineNum, arg.FilePath)
+				ok = false
+			}
 			continue
 		}
 
@@ -240,6 +247,7 @@ func getArgsFromConfig(configPath string) (args []flagArg, ok bool) {
 	r := bufio.NewReader(file)
 
 	var lineNum int
+	multiLine := ""
 	for {
 		lineNum++
 		line, err := r.ReadString('\n')
@@ -268,6 +276,14 @@ func getArgsFromConfig(configPath string) (args []flagArg, ok bool) {
 			}
 			args = append(args, importArgs...)
 			continue
+		}
+		if '\\' == line[len(line)-1] {
+			multiLine += " " + line[:len(line)-1]
+			continue
+		}
+		if 0 < len(multiLine) {
+			line = multiLine + line
+			multiLine = ""
 		}
 		if line == "" || line[0] == ';' || line[0] == '#' || line[0] == '[' {
 			continue
