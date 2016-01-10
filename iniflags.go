@@ -277,15 +277,15 @@ func getArgsFromConfig(configPath string) (args []flagArg, ok bool) {
 			args = append(args, importArgs...)
 			continue
 		}
-		if '\\' == line[len(line)-1] {
-			multiLine += " " + line[:len(line)-1]
-			continue
-		}
 		if 0 < len(multiLine) {
 			line = multiLine + line
 			multiLine = ""
 		}
 		if line == "" || line[0] == ';' || line[0] == '#' || line[0] == '[' {
+			continue
+		}
+		if '\\' == line[len(line)-1] {
+			multiLine += " " + line[:len(line)-1]
 			continue
 		}
 		parts := strings.SplitN(line, "=", 2)
